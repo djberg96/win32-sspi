@@ -1,33 +1,50 @@
-require 'ffi'
+require File.join(File.dirname(__FILE__), 'windows', 'constants')
+require File.join(File.dirname(__FILE__), 'windows', 'structs')
+require File.join(File.dirname(__FILE__), 'windows', 'functions')
 
 module Win32
-  class SSPI::Server
-    extend FFI::Library
-    ffi_lib :secur32
+  module SSPI
+    class Server
+      include Windows::Constants
+      include Windows::Structs
+      include Windows::Functions
 
-    # TODO: Move FFI functions to a common declaration file.
-    attach_function :AcquireCredentialsHandle, :AcquireCredentialsHandleA,
-      [:string, :string, :ulong, :pointer, :pointer, :pointer, :pointer, :pointer, :pointer],
-      :ulong
+      attr_reader :auth_type
 
-    attach_function :AcceptSecurityContext,
-      [:pointer, :pointer, :pointer, :ulong, :ulong, :pointer, :pointer, :pointer, :pointer],
-      :ulong
+      def initialize(auth_type = 'NTLM')
+        @auth_type = auth_type
 
-    attach_function :FreeCredentialsHandle, [:pointer], :ulong
+        cred_handle = CredHandle.new
+        time_struct = TimeStamp.new
 
-    def initialize(auth_type = 'NTLM')
-       status = AcquireCredentialsHandle(
-        nil,
-        auth_type,
-        SECPKG_CRED_INBOUND,
-        nil,
-        nil,
-        nil,
-        nil,
-        cred_struct,
-        time_struct
-      )
+        status = AcquireCredentialsHandle(
+          nil,
+          auth_type,
+          SECPKG_CRED_INBOUND,
+          nil,
+          nil,
+          nil,
+          nil,
+          cred_handle,
+          time_struct
+        )
+
+        if status != SEC_E_OK
+          raise SystemCallError.new('AcquireCredentialsHandle', FFI.errno)
+        end
+
+        begin
+        ensure
+          if FreeCredentialsHandle(cred_handle) != SEC_E_OK
+            raise SystemCallError.new('FreeCredentialsHandle', FFI.errno)
+          end
+        end
+      end
     end
   end
+end
+
+if $0 == __FILE__
+  server = Win32::SSPI::Server.new
+  p server
 end
