@@ -17,6 +17,7 @@ module Windows
       [:pointer, :pointer, :pointer, :ulong, :ulong, :pointer, :pointer, :pointer, :pointer],
       :ulong
 
+    attach_function :CompleteAuthToken, [:pointer, :pointer], :ulong
     attach_function :FreeCredentialsHandle, [:pointer], :ulong
     attach_function :DeleteSecurityContext, [:pointer], :ulong
   end
