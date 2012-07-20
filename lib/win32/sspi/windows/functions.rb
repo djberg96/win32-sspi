@@ -13,6 +13,10 @@ module Windows
       [:pointer, :pointer, :string, :ulong, :ulong, :ulong, :pointer, :ulong, :pointer, :pointer, :pointer, :pointer],
       :ulong
 
+    attach_function :AcceptSecurityContext,
+      [:pointer, :pointer, :pointer, :ulong, :ulong, :pointer, :pointer, :pointer, :pointer],
+      :ulong
+
     attach_function :FreeCredentialsHandle, [:pointer], :ulong
     attach_function :DeleteSecurityContext, [:pointer], :ulong
   end
