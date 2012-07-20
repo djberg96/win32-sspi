@@ -73,6 +73,25 @@ module Win32
     attr_reader :domain
     attr_reader :auth_type
 
+    # For analysis of type 1 messages. Not sure if this is useful yet.
+    class MessageType1
+      attr_reader :workstation
+      attr_reader :domain
+      attr_reader :signature
+
+      # Breakdown based on http://davenport.sourceforge.net/ntlm.html
+      def initialize(token)
+        @signature = token[0,8].strip
+        @type1_indicator = token[8,4]
+        @flags = token[12,4]
+        @domain_security_buffer = token[16,8]
+        @worstation_security_buffer = token[24,8]
+        @os_version_structure = token[32,8]
+        @workstation = token[40,12]
+        @domain = token[52..-1]
+      end
+    end
+
     def initialize(username = nil, domain = nil, auth_type = 'Negotiate')
       @username  = username || ENV['USERNAME'].dup
       @domain    = domain   || ENV['USERDOMAIN'].dup
@@ -88,25 +107,28 @@ module Win32
       end
     end
 
-    def get_initial_token(encode = false)
+    def get_initial_token(local = true, encode = false)
       cred_struct = CredHandle.new
       time_struct = TimeStamp.new
       auth_struct = nil
 
-      if @username || @domain
-        auth_struct = SEC_WINNT_AUTH_IDENTITY.new
-        auth_struct[:Flags] = SEC_WINNT_AUTH_IDENTITY_UNICODE
+      # If local is true, obtain handle to credentials of the logged in user.
+      unless local
+        if @username || @domain
+          auth_struct = SEC_WINNT_AUTH_IDENTITY.new
+          auth_struct[:Flags] = SEC_WINNT_AUTH_IDENTITY_UNICODE
 
-        if @username
-          username = @username.concat(0.chr).encode('UTF-16LE')
-          auth_struct[:User] = FFI::MemoryPointer.from_string(username)
-          auth_struct[:UserLength] = username.size
-        end
+          if @username
+            username = @username.concat(0.chr).encode('UTF-16LE')
+            auth_struct[:User] = FFI::MemoryPointer.from_string(username)
+            auth_struct[:UserLength] = username.size
+          end
 
-        if @domain
-          domain = @domain.concat(0.chr).encode('UTF-16LE')
-          auth_struct[:Domain] = FFI::MemoryPointer.from_string(domain)
-          auth_struct[:DomainLength] = domain.size
+          if @domain
+            domain = @domain.concat(0.chr).encode('UTF-16LE')
+            auth_struct[:Domain] = FFI::MemoryPointer.from_string(domain)
+            auth_struct[:DomainLength] = domain.size
+          end
         end
       end
 
@@ -164,6 +186,7 @@ module Win32
           bsize = sec_buf[:cbBuffer]
           @token = sec_buf[:pvBuffer].read_string_length(bsize)
 
+
           if DeleteSecurityContext(context_struct) != SEC_E_OK
             raise SystemCallError.new('DeleteSecurityContext', FFI.errno)
           end
@@ -182,14 +205,19 @@ if $0 == __FILE__
   sspi = Win32::SSPI.new(nil, nil, 'NTLM')
   sspi.get_initial_token
   token = sspi.token
+  #p token
+  m = Win32::SSPI::MessageType1.new(token)
+  p m.domain
+  p m.workstation
+  p m.signature
 
   # According to http://davenport.sourceforge.net/ntlm.html
-  p token[0,8]   # NTLMSSP Sig
-  p token[8,4]   # Type 1 indicator
-  p token[12,4]  # Flags
-  p token[16,8]  # Supplied Domain buffer
-  p token[24,8]  # Supplied Workstation buffer
-  p token[32,8]  # OS Version structure
-  p token[40,12] # Supplied Workstation data
-  p token[52,-1] # Supplied domain data
+  #p token[0,8]   # NTLMSSP Sig
+  #p token[8,4]   # Type 1 indicator
+  #p token[12,4]  # Flags
+  #p token[16,8]  # Supplied Domain buffer
+  #p token[24,8]  # Supplied Workstation buffer
+  #p token[32,-1] # OS Version structure
+  #p token[40,12]  # Supplied Workstation data
+  #p token[52..-1] # Supplied domain data
 end
