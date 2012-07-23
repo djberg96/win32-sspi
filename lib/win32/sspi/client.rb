@@ -137,6 +137,8 @@ module Win32
             raise SystemCallError.new('FreeCredentialsHandle', FFI.errno)
           end
         end
+
+        @token
       end
     end
   end
@@ -144,10 +146,11 @@ end
 
 # Eventually delete this
 if $0 == __FILE__
-  sspi = Win32::SSPI::Client.new(nil, nil, 'NTLM')
-  sspi.get_initial_token
-  token = sspi.token
-  p token
+  #sspi = Win32::SSPI::Client.new(nil, nil, 'NTLM')
+  sspi = Win32::SSPI::Client.new
+  p sspi.get_initial_token
+  #token = sspi.token
+  #p token
   #p token
   #m = Win32::SSPI::MessageType1.new(token)
   #p m.domain
