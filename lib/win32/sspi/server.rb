@@ -8,6 +8,7 @@ module Win32
       include Windows::Constants
       include Windows::Structs
       include Windows::Functions
+      extend Windows::Functions
 
       attr_reader :input
       attr_reader :auth_type
@@ -63,7 +64,7 @@ module Win32
             expiry
           )
 
-          if status == SEC_I_COMPLETE_NEEDED || status == SEC_I_COMPLETE_AND_CONTINUE)
+          if status == SEC_I_COMPLETE_NEEDED || status == SEC_I_COMPLETE_AND_CONTINUE
             if CompleteAuthToken(context, output) != SEC_E_OK
               raise SystemCallError.new('CompleteAuthToken', FFI.errno)
             end
@@ -78,11 +79,37 @@ module Win32
           end
         end
       end
+
+      def self.security_packages
+        num = FFI::MemoryPointer.new(:ulong)
+        spi = FFI::MemoryPointer.new(SecPkgInfo, 20) # Should be plenty
+        arr = []
+
+        result = EnumerateSecurityPackages(num, spi)
+
+        if result != SEC_E_OK
+          raise SystemCallError.new('EnumerateSecurityPackages', result)
+        else
+          num = num.read_long
+
+          ptr = spi[0].read_pointer
+
+          num.times{
+            s = SecPkgInfo.new(ptr)
+            arr << s[:Name]
+            ptr += SecPkgInfo.size
+          }
+        end
+
+        FreeContextBuffer(ptr)
+        arr
+      end
     end
   end
 end
 
 if $0 == __FILE__
-  server = Win32::SSPI::Server.new
-  p server
+  #server = Win32::SSPI::Server.new
+  #p server
+  p Win32::SSPI::Server.security_packages
 end
