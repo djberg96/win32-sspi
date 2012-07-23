@@ -6,6 +6,7 @@ module Windows
     SEC_E_OK                        = 0x00000000
     SEC_I_CONTINUE_NEEDED           = 0x00090312
     SEC_I_COMPLETE_NEEDED           = 0x00090313
+    SEC_I_COMPLETE_AND_CONTINUE     = 0x00090314
     SECURITY_NETWORK_DREP           = 0x00000000
     SECURITY_NATIVE_DREP            = 0x00000010
     SEC_WINNT_AUTH_IDENTITY_ANSI    = 1
