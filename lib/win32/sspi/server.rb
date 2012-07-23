@@ -12,17 +12,21 @@ module Win32
 
       attr_reader :input
       attr_reader :auth_type
+      attr_reader :token
 
       def initialize(input, auth_type = 'NTLM')
         @input = input
         @auth_type = auth_type
+        @token = nil
+      end
 
+      def get_initial_token
         cred_handle = CredHandle.new
         time_struct = TimeStamp.new
 
         status = AcquireCredentialsHandle(
           nil,
-          auth_type,
+          @auth_type,
           SECPKG_CRED_INBOUND,
           nil,
           nil,
@@ -38,46 +42,63 @@ module Win32
 
         begin
           context = CtxtHandle.new
-          expirty = TimeStamp.new
+          expiry  = TimeStamp.new
+          outbuf  = SecBuffer.new
+          inbuf   = SecBuffer.new
 
-          sec_buf = SecBuffer.new
-          sec_buf[:BufferType] = SECBUFFER_TOKEN
-          sec_buf[:cbBuffer] = TOKENBUFSIZE
-          sec_buf[:pvBuffer] = FFI::MemoryPointer.new(:char, TOKENBUFSIZE)
+          outbuf[:cbBuffer] = TOKENBUFSIZE
+          outbuf[:BufferType] = SECBUFFER_TOKEN
+          outbuf[:pvBuffer] = FFI::MemoryPointer.new(:char, TOKENBUFSIZE)
 
-          output = SecBufferDesc.new
-          output[:ulVersion] = SECBUFFER_VERSION
-          output[:cBuffers] = 1
-          output[:pBuffers] = sec_buf
+          outbuf_sec = SecBufferDesc.new
+          outbuf_sec[:ulVersion] = SECBUFFER_VERSION
+          outbuf_sec[:cBuffers] = 1
+          outbuf_sec[:pBuffers] = outbuf
+
+          inbuf[:cbBuffer] = @input.size
+          inbuf[:BufferType] = SECBUFFER_TOKEN
+          inbuf[:pvBuffer] = FFI::MemoryPointer.from_string(@input)
+
+          inbuf_sec = SecBufferDesc.new
+          inbuf_sec[:ulVersion] = SECBUFFER_VERSION
+          inbuf_sec[:cBuffers] = 1
+          inbuf_sec[:pBuffers] = inbuf
 
           context_attr = FFI::MemoryPointer.new(:ulong)
 
           status = AcceptSecurityContext(
             cred_handle,
             nil,
-            input,
+            inbuf_sec,
             ASC_REQ_DELEGATE, # Just imitating mod_auth_sspi here
             SECURITY_NATIVE_DREP,
             context,
-            output,
+            outbuf_sec,
             context_attr,
             expiry
           )
 
-          if status == SEC_I_COMPLETE_NEEDED || status == SEC_I_COMPLETE_AND_CONTINUE
-            if CompleteAuthToken(context, output) != SEC_E_OK
-              raise SystemCallError.new('CompleteAuthToken', FFI.errno)
+          if status != SEC_E_OK
+            if status == SEC_I_COMPLETE_NEEDED || status == SEC_I_COMPLETE_AND_CONTINUE
+              if CompleteAuthToken(context, output) != SEC_E_OK
+                raise SystemCallError.new('CompleteAuthToken', FFI.errno)
+              end
+            else
+              unless status == SEC_I_CONTINUE_NEEDED
+                raise SystemCallError.new('AcceptSecurityContext', status)
+              end
             end
           end
 
-          if status != SEC_E_OK
-            raise SystemCallError.new('AcceptSecurityContext', FFI.errno)
-          end
+          bsize = outbuf[:cbBuffer]
+          @token = outbuf[:pvBuffer].read_string_length(bsize)
         ensure
           if FreeCredentialsHandle(cred_handle) != SEC_E_OK
             raise SystemCallError.new('FreeCredentialsHandle', FFI.errno)
           end
         end
+
+        @token
       end
 
       def self.security_packages
