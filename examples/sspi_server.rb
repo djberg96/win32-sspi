@@ -9,5 +9,5 @@ Win32::Pipe::Server.new('sspi') do |pipe|
 
   sspi_server = Win32::SSPI::Server.new(type_1_msg)
   type_2_msg = sspi_server.get_initial_token
-  pipe.write(type_2_message)
+  pipe.write(type_2_msg)
 end
