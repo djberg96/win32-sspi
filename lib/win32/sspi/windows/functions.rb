@@ -2,7 +2,7 @@ require 'ffi'
 
 module Windows
   module Functions
-  extend FFI::Library
+    extend FFI::Library
     ffi_lib :secur32
 
     attach_function :AcquireCredentialsHandle, :AcquireCredentialsHandleA,
@@ -18,7 +18,9 @@ module Windows
       :ulong
 
     attach_function :CompleteAuthToken, [:pointer, :pointer], :ulong
-    attach_function :FreeCredentialsHandle, [:pointer], :ulong
     attach_function :DeleteSecurityContext, [:pointer], :ulong
+    attach_function :EnumerateSecurityPackages, :EnumerateSecurityPackagesA, [:pointer, :pointer], :ulong
+    attach_function :FreeContextBuffer, [:pointer], :ulong
+    attach_function :FreeCredentialsHandle, [:pointer], :ulong
   end
 end

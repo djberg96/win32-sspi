@@ -42,5 +42,16 @@ module Windows
         :pBuffers, :pointer,
       )
     end
+
+    class SecPkgInfo < FFI::Struct
+      layout(
+        :fCapabilities, :ulong,
+        :wVersion, :ushort,
+        :wRPCID, :ushort,
+        :cbMaxToken, :ulong,
+        :Name, :string,
+        :Comment, :string
+      )
+    end
   end
 end
