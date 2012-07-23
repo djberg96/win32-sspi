@@ -90,18 +90,21 @@ module Win32
         if result != SEC_E_OK
           raise SystemCallError.new('EnumerateSecurityPackages', result)
         else
-          num = num.read_long
+          begin
+            num = num.read_long
 
-          ptr = spi[0].read_pointer
+            ptr = spi[0].read_pointer
 
-          num.times{
-            s = SecPkgInfo.new(ptr)
-            arr << s[:Name]
-            ptr += SecPkgInfo.size
-          }
+            num.times{
+              s = SecPkgInfo.new(ptr)
+              arr << s[:Name]
+              ptr += SecPkgInfo.size
+            }
+          ensure
+            FreeContextBuffer(ptr)
+          end
         end
 
-        FreeContextBuffer(ptr)
         arr
       end
     end
