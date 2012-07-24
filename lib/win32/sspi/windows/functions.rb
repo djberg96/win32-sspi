@@ -22,5 +22,10 @@ module Windows
     attach_function :EnumerateSecurityPackages, :EnumerateSecurityPackagesA, [:pointer, :pointer], :ulong
     attach_function :FreeContextBuffer, [:pointer], :ulong
     attach_function :FreeCredentialsHandle, [:pointer], :ulong
+    attach_function :ImpersonateSecurityContext, [:pointer], :ulong
+    attach_function :QueryContextAttributes, :QueryContextAttributesA, [:pointer, :ulong, :pointer], :ulong
+    attach_function :QuerySecurityContextToken, [:pointer, :pointer], :ulong
+    attach_function :QuerySecurityPackageInfo, :QuerySecurityPackageInfoA, [:string, :pointer], :ulong
+    attach_function :RevertSecurityContext, [:pointer], :ulong
   end
 end

@@ -53,5 +53,9 @@ module Windows
         :Comment, :string
       )
     end
+
+    class SecPkgContext_Names < FFI::Struct
+      layout(:sUserName, :pointer)
+    end
   end
 end
