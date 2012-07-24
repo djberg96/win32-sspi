@@ -15,6 +15,7 @@ module Win32
       attr_reader :domain
       attr_reader :auth_type
       attr_reader :context
+      attr_reader :credentials
 
       # For analysis of type 1 messages. Not sure if this is useful yet.
       class MessageType1
@@ -41,6 +42,8 @@ module Win32
         @auth_type = auth_type
         @token     = nil
         @context   = nil
+        @credentials = nil
+        @context_attributes = nil
       end
 
       def token(encoded = false)
@@ -51,6 +54,7 @@ module Win32
         end
       end
 
+      # Generate the type 1 message
       def get_initial_token(local = true, encode = false)
         cred_struct = CredHandle.new
         time_struct = TimeStamp.new
@@ -92,6 +96,8 @@ module Win32
           raise SystemCallError.new('AcquireCredentialsHandle', FFI.errno)
         end
 
+        @credentials = cred_struct
+
         begin
           rflags = ISC_REQ_CONFIDENTIALITY | ISC_REQ_REPLAY_DETECT | ISC_REQ_CONNECTION
           expiry = TimeStamp.new
@@ -128,25 +134,91 @@ module Win32
             raise SystemCallError.new('InitializeSecurityContext', FFI.errno)
           else
             @context = context_struct
+            @context_attributes = context_attrib
 
             bsize = sec_buf[:cbBuffer]
             @token = sec_buf[:pvBuffer].read_string_length(bsize)
 
-            if DeleteSecurityContext(context_struct) != SEC_E_OK
-              raise SystemCallError.new('DeleteSecurityContext', FFI.errno)
-            end
+            #if DeleteSecurityContext(context_struct) != SEC_E_OK
+            #  raise SystemCallError.new('DeleteSecurityContext', FFI.errno)
+            #end
           end
         ensure
-          if FreeCredentialsHandle(cred_struct) != SEC_E_OK
-            raise SystemCallError.new('FreeCredentialsHandle', FFI.errno)
-          end
+          #if FreeCredentialsHandle(cred_struct) != SEC_E_OK
+          #  raise SystemCallError.new('FreeCredentialsHandle', FFI.errno)
+          #end
         end
 
         @token
       end
-    end
-  end
-end
+
+      # Here the token is a type 2 message received from the server and,
+      # assuming all goes well, returns a type 3 message.
+      #
+      def complete_authentication(token)
+        rflags = ISC_REQ_CONFIDENTIALITY | ISC_REQ_REPLAY_DETECT | ISC_REQ_CONNECTION
+
+        expiry = TimeStamp.new
+
+        sec_buf_in = SecBuffer.new
+        sec_buf_in[:BufferType] = SECBUFFER_TOKEN
+        sec_buf_in[:cbBuffer] = TOKENBUFSIZE
+        sec_buf_in[:pvBuffer] = FFI::MemoryPointer.from_string(token)
+
+        buf_in = SecBufferDesc.new
+        buf_in[:ulVersion] = SECBUFFER_VERSION
+        buf_in[:cBuffers] = 1
+        buf_in[:pBuffers] = sec_buf_in
+
+        sec_buf_out = SecBuffer.new
+        sec_buf_out[:BufferType] = SECBUFFER_TOKEN
+        sec_buf_out[:cbBuffer] = TOKENBUFSIZE
+        sec_buf_out[:pvBuffer] = FFI::MemoryPointer.new(:char, TOKENBUFSIZE)
+
+        buf_out = SecBufferDesc.new
+        buf_out[:ulVersion] = SECBUFFER_VERSION
+        buf_out[:cBuffers] = 1
+        buf_out[:pBuffers] = sec_buf_out
+
+        status = InitializeSecurityContext(
+          @credentials,
+          @context,
+          nil,
+          rflags,
+          0,
+          SECURITY_NETWORK_DREP,
+          buf_in,
+          0,
+          @context,
+          buf_out,
+          @context_attributes,
+          expiry
+        )
+
+        if status != SEC_I_CONTINUE_NEEDED && status != SEC_E_OK
+          raise SystemCallError.new('InitializeSecurityContext', status)
+        end
+
+        bsize = sec_buf_out[:cbBuffer]
+        token = sec_buf_out[:pvBuffer].read_string_length(bsize)
+
+        if @context && DeleteSecurityContext(@context) != SEC_E_OK
+          raise SystemCallError.new('DeleteSecurityContext', FFI.errno)
+        end
+
+        if @credentials && FreeCredentialsHandle(@credentials) != SEC_E_OK
+          raise SystemCallError.new('FreeCredentialsHandle', FFI.errno)
+        end
+
+        @context = nil
+        @credentials = nil
+        @context_attributes = nil
+
+        token
+      end
+    end # Client
+  end # SSPI
+end # Win32
 
 # Eventually delete this
 if $0 == __FILE__
