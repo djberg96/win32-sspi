@@ -14,6 +14,7 @@ module Win32
       attr_reader :username
       attr_reader :domain
       attr_reader :auth_type
+      attr_reader :context
 
       # For analysis of type 1 messages. Not sure if this is useful yet.
       class MessageType1
@@ -39,6 +40,7 @@ module Win32
         @domain    = domain   || ENV['USERDOMAIN'].dup
         @auth_type = auth_type
         @token     = nil
+        @context   = nil
       end
 
       def token(encoded = false)
@@ -125,6 +127,8 @@ module Win32
           if status != SEC_E_OK && status != SEC_I_CONTINUE_NEEDED
             raise SystemCallError.new('InitializeSecurityContext', FFI.errno)
           else
+            @context = context_struct
+
             bsize = sec_buf[:cbBuffer]
             @token = sec_buf[:pvBuffer].read_string_length(bsize)
 
@@ -148,7 +152,8 @@ end
 if $0 == __FILE__
   #sspi = Win32::SSPI::Client.new(nil, nil, 'NTLM')
   sspi = Win32::SSPI::Client.new
-  p sspi.get_initial_token
+  sspi.get_initial_token
+  p sspi.context
   #token = sspi.token
   #p token
   #p token
