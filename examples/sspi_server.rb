@@ -6,8 +6,12 @@ Win32::Pipe::Server.new('sspi') do |pipe|
   pipe.connect
   type_1_msg = pipe.read.first
   puts "Got Type 1 message: #{type_1_msg.inspect}"
+  puts "=" * 50
 
   sspi_server = Win32::SSPI::Server.new(type_1_msg)
   type_2_msg = sspi_server.get_initial_token
   pipe.write(type_2_msg)
+
+  type_3_msg = pipe.read.first
+  puts "Got Type 3 message: #{type_3_msg.inspect}"
 end
