@@ -18,6 +18,19 @@ module Windows
 
     class SecHandle < FFI::Struct
       layout(:dwLower, :pointer, :dwUpper, :pointer)
+
+      # NOTE: Experimental for now, may remove this marshalling stuff later
+
+      def marshal_dump
+        [self[:dwLower].read_ulong, self[:dwUpper].read_ulong]
+      end
+
+      def marshal_load(values)
+        lptr = FFI::MemoryPointer.new(:ulong)
+        hptr = FFI::MemoryPointer.new(:ulong)
+        lptr.write_ulong(values[0])
+        hptr.write_ulong(values[1])
+      end
     end
 
     CredHandle = SecHandle
