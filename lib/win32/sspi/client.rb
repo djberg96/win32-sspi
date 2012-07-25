@@ -106,14 +106,7 @@ module Win32
           context_attrib = FFI::MemoryPointer.new(:ulong)
 
           sec_buf = SecBuffer.new
-          sec_buf[:BufferType] = SECBUFFER_TOKEN
-          sec_buf[:cbBuffer] = TOKENBUFSIZE
-          sec_buf[:pvBuffer] = FFI::MemoryPointer.new(:char, TOKENBUFSIZE)
-
-          buffer = SecBufferDesc.new
-          buffer[:ulVersion] = SECBUFFER_VERSION
-          buffer[:cBuffers] = 1
-          buffer[:pBuffers] = sec_buf
+          buffer  = SecBufferDesc.new(sec_buf)
 
           status = InitializeSecurityContext(
             cred_struct,
@@ -160,25 +153,11 @@ module Win32
 
         expiry = TimeStamp.new
 
-        sec_buf_in = SecBuffer.new
-        sec_buf_in[:BufferType] = SECBUFFER_TOKEN
-        sec_buf_in[:cbBuffer] = TOKENBUFSIZE
-        sec_buf_in[:pvBuffer] = FFI::MemoryPointer.from_string(token)
-
-        buf_in = SecBufferDesc.new
-        buf_in[:ulVersion] = SECBUFFER_VERSION
-        buf_in[:cBuffers] = 1
-        buf_in[:pBuffers] = sec_buf_in
+        sec_buf_in = SecBuffer.new(token)
+        buf_in     = SecBufferDesc.new(sec_buf_in)
 
         sec_buf_out = SecBuffer.new
-        sec_buf_out[:BufferType] = SECBUFFER_TOKEN
-        sec_buf_out[:cbBuffer] = TOKENBUFSIZE
-        sec_buf_out[:pvBuffer] = FFI::MemoryPointer.new(:char, TOKENBUFSIZE)
-
-        buf_out = SecBufferDesc.new
-        buf_out[:ulVersion] = SECBUFFER_VERSION
-        buf_out[:cBuffers] = 1
-        buf_out[:pBuffers] = sec_buf_out
+        buf_out     = SecBufferDesc.new(sec_buf_out)
 
         status = InitializeSecurityContext(
           @credentials,

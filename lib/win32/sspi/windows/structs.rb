@@ -33,6 +33,19 @@ module Windows
         :BufferType, :ulong,
         :pvBuffer, :pointer
       )
+
+      def initialize(token = nil, mem = nil)
+        super(mem)
+
+        self[:cbBuffer]   = 1024 # Our TOKENBUFSIZE
+        self[:BufferType] = 2    # SECBUFFER_TOKEN
+
+        if token
+          self[:pvBuffer]   = FFI::MemoryPointer.from_string(token)
+        else
+          self[:pvBuffer]   = FFI::MemoryPointer.new(:char, 1024)
+        end
+      end
     end
 
     class SecBufferDesc < FFI::Struct
@@ -41,6 +54,13 @@ module Windows
         :cBuffers, :ulong,
         :pBuffers, :pointer,
       )
+
+      def initialize(sec_buffer = nil, mem = nil)
+        super(mem)
+        self[:ulVersion] = 0 # SECBUFFER_VERSION
+        self[:cBuffers]  = 1
+        self[:pBuffers]  = sec_buffer
+      end
     end
 
     class SecPkgInfo < FFI::Struct
