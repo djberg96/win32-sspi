@@ -34,18 +34,18 @@ module Windows
         :pvBuffer, :pointer
       )
 
-      def initialize(token = nil, mem = nil)
-        super(mem)
-
+      def init(token = nil)
         self[:BufferType] = 2 # SECBUFFER_TOKEN
 
         if token
           self[:cbBuffer] = token.size
           self[:pvBuffer] = FFI::MemoryPointer.from_string(token)
         else
-          self[:cbBuffer] = 1024 # Our TOKENBUFSIZE
+          self[:cbBuffer] = 4096 # Our TOKENBUFSIZE
           self[:pvBuffer] = FFI::MemoryPointer.new(:char, 1024)
         end
+
+        self
       end
     end
 
@@ -56,11 +56,11 @@ module Windows
         :pBuffers, :pointer,
       )
 
-      def initialize(sec_buffer = nil, mem = nil)
-        super(mem)
+      def init(sec_buffer)
         self[:ulVersion] = 0 # SECBUFFER_VERSION
         self[:cBuffers]  = 1
         self[:pBuffers]  = sec_buffer
+        self
       end
     end
 

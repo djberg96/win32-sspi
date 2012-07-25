@@ -43,11 +43,11 @@ module Win32
         begin
           context = CtxtHandle.new
           expiry  = TimeStamp.new
-          outbuf  = SecBuffer.new
-          inbuf   = SecBuffer.new(@input)
+          outbuf  = SecBuffer.new.init
+          inbuf   = SecBuffer.new.init(@input)
 
-          outbuf_sec = SecBufferDesc.new(outbuf)
-          inbuf_sec  = SecBufferDesc.new(inbuf)
+          outbuf_sec = SecBufferDesc.new.init(outbuf)
+          inbuf_sec  = SecBufferDesc.new.init(inbuf)
 
           context_attr = FFI::MemoryPointer.new(:ulong)
 

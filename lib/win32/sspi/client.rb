@@ -104,8 +104,8 @@ module Win32
         context_struct = CtxtHandle.new
         context_attrib = FFI::MemoryPointer.new(:ulong)
 
-        sec_buf = SecBuffer.new
-        buffer  = SecBufferDesc.new(sec_buf)
+        sec_buf = SecBuffer.new.init
+        buffer  = SecBufferDesc.new.init(sec_buf)
 
         status = InitializeSecurityContext(
           cred_struct,
@@ -143,11 +143,11 @@ module Win32
 
         expiry = TimeStamp.new
 
-        sec_buf_in = SecBuffer.new(token)
-        buf_in     = SecBufferDesc.new(sec_buf_in)
+        sec_buf_in = SecBuffer.new.init(token)
+        buf_in = SecBufferDesc.new.init(sec_buf_in)
 
-        sec_buf_out = SecBuffer.new
-        buf_out     = SecBufferDesc.new(sec_buf_out)
+        sec_buf_out = SecBuffer.new.init
+        buf_out = SecBufferDesc.new.init(sec_buf_out)
 
         status = InitializeSecurityContext(
           @credentials,
@@ -170,6 +170,20 @@ module Win32
 
         bsize = sec_buf_out[:cbBuffer]
         token = sec_buf_out[:pvBuffer].read_string_length(bsize)
+
+        ptr = SecPkgContext_Names.new
+
+        status = QueryContextAttributes(@context, SECPKG_ATTR_NAMES, ptr)
+
+        if status != SEC_E_OK
+          raise SytemCallError.new('QueryContextAttributes', status)
+        end
+
+        user_string = ptr[:sUserName].read_string
+
+        if user_string.include?("\\")
+          @domain, @username = user_string.split("\\")
+        end
 
         if @context && DeleteSecurityContext(@context) != SEC_E_OK
           raise SystemCallError.new('DeleteSecurityContext', FFI.errno)
@@ -194,7 +208,7 @@ if $0 == __FILE__
   #sspi = Win32::SSPI::Client.new(nil, nil, 'NTLM')
   sspi = Win32::SSPI::Client.new
   sspi.get_initial_token
-  p sspi.context
+  #p sspi.context
   #token = sspi.token
   #p token
   #p token
