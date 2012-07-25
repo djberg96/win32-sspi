@@ -98,48 +98,38 @@ module Win32
 
         @credentials = cred_struct
 
-        begin
-          rflags = ISC_REQ_CONFIDENTIALITY | ISC_REQ_REPLAY_DETECT | ISC_REQ_CONNECTION
-          expiry = TimeStamp.new
+        rflags = ISC_REQ_CONFIDENTIALITY | ISC_REQ_REPLAY_DETECT | ISC_REQ_CONNECTION
+        expiry = TimeStamp.new
 
-          context_struct = CtxtHandle.new
-          context_attrib = FFI::MemoryPointer.new(:ulong)
+        context_struct = CtxtHandle.new
+        context_attrib = FFI::MemoryPointer.new(:ulong)
 
-          sec_buf = SecBuffer.new
-          buffer  = SecBufferDesc.new(sec_buf)
+        sec_buf = SecBuffer.new
+        buffer  = SecBufferDesc.new(sec_buf)
 
-          status = InitializeSecurityContext(
-            cred_struct,
-            nil,
-            nil,
-            rflags,
-            0,
-            SECURITY_NETWORK_DREP,
-            nil,
-            0,
-            context_struct,
-            buffer,
-            context_attrib,
-            expiry
-          )
+        status = InitializeSecurityContext(
+          cred_struct,
+          nil,
+          nil,
+          rflags,
+          0,
+          SECURITY_NETWORK_DREP,
+          nil,
+          0,
+          context_struct,
+          buffer,
+          context_attrib,
+          expiry
+        )
 
-          if status != SEC_E_OK && status != SEC_I_CONTINUE_NEEDED
-            raise SystemCallError.new('InitializeSecurityContext', FFI.errno)
-          else
-            @context = context_struct
-            @context_attributes = context_attrib
+        if status != SEC_E_OK && status != SEC_I_CONTINUE_NEEDED
+          raise SystemCallError.new('InitializeSecurityContext', FFI.errno)
+        else
+          @context = context_struct
+          @context_attributes = context_attrib
 
-            bsize = sec_buf[:cbBuffer]
-            @token = sec_buf[:pvBuffer].read_string_length(bsize)
-
-            #if DeleteSecurityContext(context_struct) != SEC_E_OK
-            #  raise SystemCallError.new('DeleteSecurityContext', FFI.errno)
-            #end
-          end
-        ensure
-          #if FreeCredentialsHandle(cred_struct) != SEC_E_OK
-          #  raise SystemCallError.new('FreeCredentialsHandle', FFI.errno)
-          #end
+          bsize = sec_buf[:cbBuffer]
+          @token = sec_buf[:pvBuffer].read_string_length(bsize)
         end
 
         @token
