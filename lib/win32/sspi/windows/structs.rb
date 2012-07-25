@@ -37,13 +37,14 @@ module Windows
       def initialize(token = nil, mem = nil)
         super(mem)
 
-        self[:cbBuffer]   = 1024 # Our TOKENBUFSIZE
-        self[:BufferType] = 2    # SECBUFFER_TOKEN
+        self[:BufferType] = 2 # SECBUFFER_TOKEN
 
         if token
-          self[:pvBuffer]   = FFI::MemoryPointer.from_string(token)
+          self[:cbBuffer] = token.size
+          self[:pvBuffer] = FFI::MemoryPointer.from_string(token)
         else
-          self[:pvBuffer]   = FFI::MemoryPointer.new(:char, 1024)
+          self[:cbBuffer] = 1024 # Our TOKENBUFSIZE
+          self[:pvBuffer] = FFI::MemoryPointer.new(:char, 1024)
         end
       end
     end
