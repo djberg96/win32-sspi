@@ -61,6 +61,8 @@ module Win32
         auth_struct = nil
 
         # If local is true, obtain handle to credentials of the logged in user.
+        #
+        # FIXME: Causes the client to choke when generating the type 3 message.
         unless local
           if @username || @domain
             auth_struct = SEC_WINNT_AUTH_IDENTITY.new
@@ -94,8 +96,6 @@ module Win32
           raise SystemCallError.new('AcquireCredentialsHandle', FFI.errno)
         end
 
-        @credentials = cred_struct
-
         rflags = ISC_REQ_CONFIDENTIALITY | ISC_REQ_REPLAY_DETECT | ISC_REQ_CONNECTION
         expiry = TimeStamp.new
 
@@ -123,6 +123,7 @@ module Win32
         if status != SEC_E_OK && status != SEC_I_CONTINUE_NEEDED
           raise SystemCallError.new('InitializeSecurityContext', FFI.errno)
         else
+          @credentials = cred_struct
           @context = context_struct
           @context_attributes = context_attrib
 
