@@ -5,17 +5,17 @@ Win32::Pipe::Client.new('sspi') do |pipe|
   client = Win32::SSPI::Client.new
 
   type_1_message = client.get_initial_token
-  p type_1_message
+  puts "Generated type 1 message: #{type_1_message.inspect}"
   pipe.write(type_1_message)
 
   puts "=" * 50
 
   type_2_message = pipe.read.first
-  p type_2_message
+  puts "Received type 2 message from server: #{type_2_message.inspect}"
 
   puts "=" * 50
 
   type_3_message = client.complete_authentication(type_2_message)
-  p type_3_message
+  puts "Generated type 3 message: #{type_3_message.inspect}"
   pipe.write(type_3_message)
 end
