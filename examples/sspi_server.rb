@@ -17,5 +17,7 @@ Win32::Pipe::Server.new('sspi') do |pipe|
   puts "=" * 50
 
   sspi_server.complete_authentication(type_3_msg)
+  puts "User: " + sspi_server.username
+  puts "Domain: " + sspi_server.domain
   puts "Completed"
 end

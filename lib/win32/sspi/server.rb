@@ -13,6 +13,8 @@ module Win32
       attr_reader :input
       attr_reader :auth_type
       attr_reader :token
+      attr_reader :username
+      attr_reader :domain
 
       # Here the input is the type 1 message received from the client
       def initialize(input, auth_type = 'NTLM')
@@ -21,6 +23,10 @@ module Win32
         @token = nil
         @context = CtxtHandle.new
         @credentials = CredHandle.new
+
+        # These won't be set unless complete_authentication is successful
+        @username = nil
+        @domain = nil
       end
 
       def get_initial_token
@@ -102,6 +108,21 @@ module Win32
 
         if status != SEC_E_OK
           raise SystemCallError.new('AcceptSecurityContext', FFI.errno)
+        end
+
+        # Finally, let's get the user and domain
+        ptr = SecPkgContext_Names.new
+
+        status = QueryContextAttributes(@context, SECPKG_ATTR_NAMES, ptr)
+
+        if status != SEC_E_OK
+          raise SytemCallError.new('QueryContextAttributes', FFI.errno)
+        end
+
+        user_string = ptr[:sUserName].read_string
+
+        if user_string.include?("\\")
+          @domain, @username = user_string.split("\\")
         end
 
         if @credentials && FreeCredentialsHandle(@credentials) != SEC_E_OK
