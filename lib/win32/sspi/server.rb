@@ -14,14 +14,16 @@ module Win32
       attr_reader :auth_type
       attr_reader :token
 
+      # Here the input is the type 1 message received from the client
       def initialize(input, auth_type = 'NTLM')
         @input = input
         @auth_type = auth_type
         @token = nil
+        @context = CtxtHandle.new
+        @credentials = CredHandle.new
       end
 
       def get_initial_token
-        cred_handle = CredHandle.new
         time_struct = TimeStamp.new
 
         status = AcquireCredentialsHandle(
@@ -32,7 +34,7 @@ module Win32
           nil,
           nil,
           nil,
-          cred_handle,
+          @credentials,
           time_struct
         )
 
@@ -40,50 +42,71 @@ module Win32
           raise SystemCallError.new('AcquireCredentialsHandle', FFI.errno)
         end
 
-        begin
-          context = CtxtHandle.new
-          expiry  = TimeStamp.new
-          outbuf  = SecBuffer.new.init
-          inbuf   = SecBuffer.new.init(@input)
+        expiry  = TimeStamp.new
+        outbuf  = SecBuffer.new.init
+        inbuf   = SecBuffer.new.init(@input)
 
-          outbuf_sec = SecBufferDesc.new.init(outbuf)
-          inbuf_sec  = SecBufferDesc.new.init(inbuf)
+        outbuf_sec = SecBufferDesc.new.init(outbuf)
+        inbuf_sec  = SecBufferDesc.new.init(inbuf)
 
-          context_attr = FFI::MemoryPointer.new(:ulong)
+        context_attr = FFI::MemoryPointer.new(:ulong)
 
-          status = AcceptSecurityContext(
-            cred_handle,
-            nil,
-            inbuf_sec,
-            ASC_REQ_DELEGATE, # Just imitating mod_auth_sspi here
-            SECURITY_NATIVE_DREP,
-            context,
-            outbuf_sec,
-            context_attr,
-            expiry
-          )
+        status = AcceptSecurityContext(
+          @credentials,
+          nil,
+          inbuf_sec,
+          ASC_REQ_DELEGATE, # Just imitating mod_auth_sspi here
+          SECURITY_NATIVE_DREP,
+          @context,
+          outbuf_sec,
+          context_attr,
+          expiry
+        )
 
-          if status != SEC_E_OK
-            if status == SEC_I_COMPLETE_NEEDED || status == SEC_I_COMPLETE_AND_CONTINUE
-              if CompleteAuthToken(context, output) != SEC_E_OK
-                raise SystemCallError.new('CompleteAuthToken', FFI.errno)
-              end
-            else
-              unless status == SEC_I_CONTINUE_NEEDED
-                raise SystemCallError.new('AcceptSecurityContext', status)
-              end
+        if status != SEC_E_OK
+          if status == SEC_I_COMPLETE_NEEDED || status == SEC_I_COMPLETE_AND_CONTINUE
+            if CompleteAuthToken(@context, output) != SEC_E_OK
+              raise SystemCallError.new('CompleteAuthToken', FFI.errno)
             end
-          end
-
-          bsize = outbuf[:cbBuffer]
-          @token = outbuf[:pvBuffer].read_string_length(bsize)
-        ensure
-          if FreeCredentialsHandle(cred_handle) != SEC_E_OK
-            raise SystemCallError.new('FreeCredentialsHandle', FFI.errno)
+          else
+            unless status == SEC_I_CONTINUE_NEEDED
+              raise SystemCallError.new('AcceptSecurityContext', FFI.errno)
+            end
           end
         end
 
+        bsize = outbuf[:cbBuffer]
+        @token = outbuf[:pvBuffer].read_string_length(bsize)
+
         @token
+      end
+
+      # Here the token is the type 3 message received from the client
+      def complete_authentication(token)
+        inbuf = SecBuffer.new.init(token)
+        inbuf_sec = SecBufferDesc.new.init(inbuf)
+
+        context_attr = FFI::MemoryPointer.new(:ulong)
+
+        status = AcceptSecurityContext(
+          @credentials,
+          @context,
+          inbuf_sec,
+          ASC_REQ_DELEGATE,
+          SECURITY_NATIVE_DREP,
+          @context,
+          nil,
+          context_attr,
+          nil
+        )
+
+        if status != SEC_E_OK
+          raise SystemCallError.new('AcceptSecurityContext', FFI.errno)
+        end
+
+        if @credentials && FreeCredentialsHandle(@credentials) != SEC_E_OK
+          raise SystemCallError.new('FreeCredentialsHandle', FFI.errno)
+        end
       end
 
       def self.security_packages
@@ -94,7 +117,7 @@ module Win32
         result = EnumerateSecurityPackages(num, spi)
 
         if result != SEC_E_OK
-          raise SystemCallError.new('EnumerateSecurityPackages', result)
+          raise SystemCallError.new('EnumerateSecurityPackages', FFI.errno)
         else
           begin
             num = num.read_long
