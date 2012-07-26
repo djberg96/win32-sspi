@@ -67,13 +67,13 @@ module Win32
             auth_struct[:Flags] = SEC_WINNT_AUTH_IDENTITY_ANSI
 
             if @username
-              auth_struct[:User] = FFI::MemoryPointer.from_string(username)
-              auth_struct[:UserLength] = username.size
+              auth_struct[:User] = FFI::MemoryPointer.from_string(@username.dup)
+              auth_struct[:UserLength] = @username.size
             end
 
             if @domain
-              auth_struct[:Domain] = FFI::MemoryPointer.from_string(domain)
-              auth_struct[:DomainLength] = domain.size
+              auth_struct[:Domain] = FFI::MemoryPointer.from_string(@domain.dup)
+              auth_struct[:DomainLength] = @domain.size
             end
           end
         end
