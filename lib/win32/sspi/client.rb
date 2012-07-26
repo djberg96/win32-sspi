@@ -64,16 +64,14 @@ module Win32
         unless local
           if @username || @domain
             auth_struct = SEC_WINNT_AUTH_IDENTITY.new
-            auth_struct[:Flags] = SEC_WINNT_AUTH_IDENTITY_UNICODE
+            auth_struct[:Flags] = SEC_WINNT_AUTH_IDENTITY_ANSI
 
             if @username
-              username = @username.concat(0.chr).encode('UTF-16LE')
               auth_struct[:User] = FFI::MemoryPointer.from_string(username)
               auth_struct[:UserLength] = username.size
             end
 
             if @domain
-              domain = @domain.concat(0.chr).encode('UTF-16LE')
               auth_struct[:Domain] = FFI::MemoryPointer.from_string(domain)
               auth_struct[:DomainLength] = domain.size
             end
@@ -165,7 +163,7 @@ module Win32
         )
 
         if status != SEC_I_CONTINUE_NEEDED && status != SEC_E_OK
-          raise SystemCallError.new('InitializeSecurityContext', status)
+          raise SystemCallError.new('InitializeSecurityContext', FFI.errno)
         end
 
         bsize = sec_buf_out[:cbBuffer]
@@ -176,7 +174,7 @@ module Win32
         status = QueryContextAttributes(@context, SECPKG_ATTR_NAMES, ptr)
 
         if status != SEC_E_OK
-          raise SytemCallError.new('QueryContextAttributes', status)
+          raise SytemCallError.new('QueryContextAttributes', FFI.errno)
         end
 
         user_string = ptr[:sUserName].read_string
