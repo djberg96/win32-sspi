@@ -14,4 +14,8 @@ Win32::Pipe::Server.new('sspi') do |pipe|
 
   type_3_msg = pipe.read.first
   puts "Got Type 3 message: #{type_3_msg.inspect}"
+  puts "=" * 50
+
+  sspi_server.complete_authentication(type_3_msg)
+  puts "Completed"
 end
