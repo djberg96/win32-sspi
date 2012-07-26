@@ -42,9 +42,9 @@ module Win32
         @password  = password
         @auth_type = auth_type
         @token     = nil
-        @context   = nil
-        @credentials = nil
-        @context_attributes = nil
+        @context   = CtxtHandle.new
+        @credentials = CredHandle.new
+        @context_attributes = FFI::MemoryPointer.new(:ulong)
       end
 
       def token(encoded = false)
@@ -57,7 +57,6 @@ module Win32
 
       # Generate the type 1 message
       def get_initial_token(local = true, encode = false)
-        cred_struct = CredHandle.new
         time_struct = TimeStamp.new
         auth_struct = nil
 
@@ -94,7 +93,7 @@ module Win32
           auth_struct,
           nil,
           nil,
-          cred_struct,
+          @credentials,
           time_struct
         )
 
@@ -105,14 +104,11 @@ module Win32
         rflags = ISC_REQ_CONFIDENTIALITY | ISC_REQ_REPLAY_DETECT | ISC_REQ_CONNECTION
         expiry = TimeStamp.new
 
-        context_struct = CtxtHandle.new
-        context_attrib = FFI::MemoryPointer.new(:ulong)
-
         sec_buf = SecBuffer.new.init
         buffer  = SecBufferDesc.new.init(sec_buf)
 
         status = InitializeSecurityContext(
-          cred_struct,
+          @credentials,
           nil,
           nil,
           rflags,
@@ -120,19 +116,15 @@ module Win32
           SECURITY_NETWORK_DREP,
           nil,
           0,
-          context_struct,
+          @context,
           buffer,
-          context_attrib,
+          @context_attributes,
           expiry
         )
 
         if status != SEC_E_OK && status != SEC_I_CONTINUE_NEEDED
           raise SystemCallError.new('InitializeSecurityContext', FFI.errno)
         else
-          @credentials = cred_struct
-          @context = context_struct
-          @context_attributes = context_attrib
-
           bsize = sec_buf[:cbBuffer]
           @token = sec_buf[:pvBuffer].read_string_length(bsize)
         end
