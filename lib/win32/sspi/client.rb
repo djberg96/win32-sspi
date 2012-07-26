@@ -36,9 +36,10 @@ module Win32
         end
       end
 
-      def initialize(username = nil, domain = nil, auth_type = 'NTLM')
+      def initialize(username = nil, domain = nil, password = nil, auth_type = 'NTLM')
         @username  = username || ENV['USERNAME'].dup
         @domain    = domain   || ENV['USERDOMAIN'].dup
+        @password  = password
         @auth_type = auth_type
         @token     = nil
         @context   = nil
@@ -62,9 +63,9 @@ module Win32
 
         # If local is true, obtain handle to credentials of the logged in user.
         #
-        # FIXME: Causes the client to choke when generating the type 3 message.
+        # FIXME: Causes the client to choke in the complete_authentication method.
         unless local
-          if @username || @domain
+          if @username || @domain || @password
             auth_struct = SEC_WINNT_AUTH_IDENTITY.new
             auth_struct[:Flags] = SEC_WINNT_AUTH_IDENTITY_ANSI
 
@@ -76,6 +77,11 @@ module Win32
             if @domain
               auth_struct[:Domain] = FFI::MemoryPointer.from_string(@domain.dup)
               auth_struct[:DomainLength] = @domain.size
+            end
+
+            if @password
+              auth_struct[:Password] = FFI::MemoryPointer.from_string(@password.dup)
+              auth_struct[:PasswordLength] = @password.size
             end
           end
         end
