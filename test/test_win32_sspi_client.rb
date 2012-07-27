@@ -8,8 +8,9 @@ require 'win32/sspi/server'
 class TC_Win32_SSPI_Client < Test::Unit::TestCase
   def setup
     @client = Win32::SSPI::Client.new
-    @server = Win32::SSPI::Client.new
+    @server = Win32::SSPI::Server.new
     @type1 = nil
+    @type3 = nil
   end
 
   test "username basic functionality" do
@@ -88,11 +89,25 @@ class TC_Win32_SSPI_Client < Test::Unit::TestCase
     assert_not_nil(@client.type_1_message)
   end
 
-  test "complete authentication basic functionality" do
+  test "complete_authentication basic functionality" do
+    assert_respond_to(@client, :complete_authentication)
+  end
+
+  test "complete_authentication accepts a type 2 message and returns a type 3 message" do
+    assert_nothing_raised{ @type2 = @server.initial_token(@client.initial_token) }
+    assert_nothing_raised{ @type3 = @client.complete_authentication(@type2) }
+    assert_kind_of(String, @type3)
+    assert_true(@type3.size > 10)
+  end
+
+  test "complete_authentication raises an error if a bogus token is passed" do
+    assert_raise(Errno::EINVAL){ @client.complete_authentication('foo') }
   end
 
   def teardown
     @client = nil
-    @type1 = nil
+    @server = nil
+    @type1  = nil
+    @type3  = nil
   end
 end
