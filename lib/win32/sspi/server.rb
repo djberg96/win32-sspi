@@ -14,7 +14,6 @@ module Win32
 
       attr_reader :type_1_message
       attr_reader :auth_type
-      attr_reader :token
       attr_reader :username
       attr_reader :domain
 
