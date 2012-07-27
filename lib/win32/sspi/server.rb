@@ -13,6 +13,7 @@ module Win32
       extend Windows::Functions
 
       attr_reader :type_1_message
+      attr_reader :type_2_message
       attr_reader :auth_type
       attr_reader :token
       attr_reader :username
