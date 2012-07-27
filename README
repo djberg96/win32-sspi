@@ -16,3 +16,20 @@ From http://davenport.sourceforge.net/ntlm.html
 4. The client receives the response token from the server and calls InitializeSecurityContext again, passing the server's token as input. This provides us with another authentication request token (the Type 3 message). The return value indicates that the security context was successfully initialized; the token is sent to the server.
 
 5. The server receives the token from the client and calls AcceptSecurityContext again, using the Type 3 message as input. The return value indicates the context was successfully accepted; no token is produced, and authentication is complete.
+
+= Local authentication
+
+Local Authentication
+
+Local authentication is negotiated through a series of decisions made by the client and server, based on the information in the NTLM messages. It works as follows:
+
+1. The client calls the AcquireCredentialsHandle function, specifying the default credentials by passing in null to the "pAuthData" parameter. This obtains a handle to the credentials of the logged in user for single sign-on.
+
+2. The client calls the SSPI InitializeSecurityContext function to create the Type 1 message. When the default credential handle is supplied, the Type 1 message contains the workstation and domain name of the client. This is indicated by the presence of the "Negotiate Domain Supplied" and "Negotiate Workstation Supplied" flags, and the inclusion of populated Supplied Domain and Supplied Workstation security buffers in the message.
+
+3. The server receives the Type 1 message from the client, and calls AcceptSecurityContext. This creates a local security context on the server to represent the client. The server examines the domain and workstation information sent by the client to determine if the client and server are the same machine. If so, the server initiates local authentication by setting the "Negotiate Local Call" flag in the resultant Type 2 message. The first long in the Context field of the Type 2 message is populated with the "upper" portion of the newly obtained SSPI context handle (specifically, the "dwUpper" field of the SSPI CtxtHandle structure). The second long in the Context field appears to be empty in all cases. (although logically one would assume it should contain the "lower" portion of the context handle).
+
+4. The client receives the Type 2 message from the server and passes it to InitializeSecurityContext. Having noted the presence of the "Negotiate Local Call" flag, the client examines the server context handle to determine if it represents a valid local security context. If the context cannot be validated, authentication proceeds as usual - the appropriate responses are calculated, and included with the domain, workstation, and username in the Type 3 message. If the security context handle from the Type 2 message can be validated, however, no responses are prepared whatsoever. Instead, the default credentials are internally associated with the server context. The resulting Type 3 message is completely empty, containing zero-length security buffers for the responses as well as the username, domain, and workstation.
+
+5. The server receives the Type 3 message and uses it as input to the AcceptSecurityContext function. The server verifies that the security context has been associated with a user; if so, authentication has successfully completed. If the context has not been bound to a user, authentication fails.
+
