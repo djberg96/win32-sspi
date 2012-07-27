@@ -1,8 +1,8 @@
 require 'base64'
-
 require File.join(File.dirname(__FILE__), 'windows', 'constants')
 require File.join(File.dirname(__FILE__), 'windows', 'structs')
 require File.join(File.dirname(__FILE__), 'windows', 'functions')
+require File.join(File.dirname(__FILE__), 'windows', 'misc')
 
 module Win32
   module SSPI
@@ -36,27 +36,51 @@ module Win32
         end
       end
 
+      # Creates a new Win32::SSPI::Client instance. The username, domain, and
+      # password arguments are only used if the client is not using local
+      # credentials when the call to initial_token is called.
+      #
       def initialize(username = nil, domain = nil, password = nil, auth_type = 'NTLM')
         @username  = username || ENV['USERNAME'].dup
         @domain    = domain   || ENV['USERDOMAIN'].dup
         @password  = password
         @auth_type = auth_type
-        @token     = nil
         @context   = CtxtHandle.new
         @credentials = CredHandle.new
         @context_attributes = FFI::MemoryPointer.new(:ulong)
+
+        # These are initialized after calls to initial_token and complete_authentication
+        @type_1_message = nil
+        @type_3_message = nil
       end
 
-      def token(encoded = false)
+      # Returns the token initialized after the call to initial_token. If the
+      # encoded argument is true, it returns a base64 encoded token.
+      #
+      def type_1_message(encoded = false)
         if encoded
-          Base64.encode64(@token).delete("\n")
+          Base64.encode64(@type_1_message).delete("\n")
         else
-          @token
+          @type_1_message
         end
       end
 
-      # Generate the type 1 message
-      def get_initial_token(local = true, encode = false)
+      # Returns the token initialized after the call to complete_authentication.
+      # If the encoded argument is true, it returns a base64 encoded token.
+      #
+      def type_3_message(encoded = false)
+        if encoded
+          Base64.encode64(@type_3_message).delete("\n")
+        else
+          @type_3_message
+        end
+      end
+
+      # Generate the type 1 message. If the local argument is true, then local
+      # credentials are used. Otherwise, the username, domain and password
+      # arguments passed to the constructor are used.
+      #
+      def initial_token(local = true)
         time_struct = TimeStamp.new
         auth_struct = nil
 
@@ -126,10 +150,10 @@ module Win32
           raise SystemCallError.new('InitializeSecurityContext', FFI.errno)
         else
           bsize = sec_buf[:cbBuffer]
-          @token = sec_buf[:pvBuffer].read_string_length(bsize)
+          @type_1_message = sec_buf[:pvBuffer].read_string_length(bsize)
         end
 
-        @token
+        @type_1_message
       end
 
       # Here the token is a type 2 message received from the server and,
@@ -193,6 +217,7 @@ module Win32
         @context = nil
         @credentials = nil
         @context_attributes = nil
+        @type_3_message = token
 
         token
       end
