@@ -1,3 +1,18 @@
+= Description
 This is an FFI implementation of SSPI on Windows.
 
 It is port, sort of, of the rubysspi library to FFI. For now, this is mainly being done as a learning excercise. Please do not use this code.
+
+= Some details of the SSPI/NTLM handshake
+
+From http://davenport.sourceforge.net/ntlm.html
+
+1. The client obtains a representation of the credential set for the user via the SSPI AcquireCredentialsHandle function.
+
+2. The client calls the SSPI InitializeSecurityContext function to obtain an authentication request token (a Type 1 message). The client sends this token to the server. The return value from the function indicates that authentication will require multiple steps.
+
+3. The server receives the token from the client, and uses it as input to the AcceptSecurityContext SSPI function. This creates a local security context on the server to represent the client, and yields an authentication response token (the Type 2 message), which is sent to the client. The return value from the function indicates that further information is needed from the client.
+
+4. The client receives the response token from the server and calls InitializeSecurityContext again, passing the server's token as input. This provides us with another authentication request token (the Type 3 message). The return value indicates that the security context was successfully initialized; the token is sent to the server.
+
+5. The server receives the token from the client and calls AcceptSecurityContext again, using the Type 3 message as input. The return value indicates the context was successfully accepted; no token is produced, and authentication is complete.
