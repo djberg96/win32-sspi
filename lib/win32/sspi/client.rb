@@ -16,6 +16,7 @@ module Win32
       attr_reader :auth_type
       attr_reader :context
       attr_reader :credentials
+      attr_reader :password
 
       # For analysis of type 1 messages. Not sure if this is useful yet.
       class MessageType1
