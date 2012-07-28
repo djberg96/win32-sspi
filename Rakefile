@@ -18,3 +18,25 @@ namespace :gem do
     sh "gem install #{file}"
   end
 end
+
+namespace :test do
+  Rake::TestTask.new(:client) do |t|
+    t.test_files = FileList['test/test_win32_sspi_client.rb']
+    t.warning = true
+    t.verbose = true
+  end
+
+  Rake::TestTask.new(:server) do |t|
+    t.test_files = FileList['test/test_win32_sspi_server.rb']
+    t.warning = true
+    t.verbose = true
+  end
+
+  Rake::TestTask.new(:all) do |t|
+    t.test_files = FileList['test/test_win32*']
+    t.warning = true
+    t.verbose = true
+  end
+end
+
+task :default => 'test:all'
