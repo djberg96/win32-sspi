@@ -27,5 +27,15 @@ module Windows
     attach_function :QuerySecurityContextToken, [:pointer, :pointer], :ulong
     attach_function :QuerySecurityPackageInfo, :QuerySecurityPackageInfoA, [:string, :pointer], :ulong
     attach_function :RevertSecurityContext, [:pointer], :ulong
+    
+    ffi_lib :kernel32
+      
+    attach_function :FormatMessageA, [:ulong, :ulong, :ulong, :ulong, :pointer, :ulong, :pointer], :ulong
+      
+    def get_last_error(err_num = FFI.errno)
+      buf = FFI::MemoryPointer.new(:char, 512)        
+      FormatMessageA(12288, 0, err_num, 0, buf, buf.size, nil)
+      buf.read_string
+    end
   end
 end
