@@ -126,7 +126,7 @@ module Win32
         )
 
         if status != SEC_E_OK
-          raise SystemCallError.new('AcceptSecurityContext', FFI.errno)
+          raise SystemCallError.new('AcceptSecurityContext', SecurityStatus.new(status))
         end
 
         # Finally, let's get the user and domain
@@ -135,7 +135,7 @@ module Win32
         qstatus = QueryContextAttributes(@context, SECPKG_ATTR_NAMES, ptr)
 
         if qstatus != SEC_E_OK
-          raise SytemCallError.new('QueryContextAttributes', FFI.errno)
+          raise SytemCallError.new('QueryContextAttributes', SecurityStatus.new(status))
         end
 
         user_string = ptr[:sUserName].read_string
