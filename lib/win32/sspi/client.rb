@@ -187,7 +187,7 @@ module Win32
         )
 
         if status != SEC_I_CONTINUE_NEEDED && status != SEC_E_OK
-          raise SystemCallError.new('InitializeSecurityContext', FFI.errno)
+          SystemCallError.new('InitializeSecurityContext', SecurityStatus.new(status))
         end
 
         bsize = sec_buf_out[:cbBuffer]
@@ -198,7 +198,7 @@ module Win32
         status = QueryContextAttributes(@context, SECPKG_ATTR_NAMES, ptr)
 
         if status != SEC_E_OK
-          raise SytemCallError.new('QueryContextAttributes', FFI.errno)
+          raise SystemCallError.new('QueryContextAttributes', SecurityStatus.new(status))
         end
 
         user_string = ptr[:sUserName].read_string
