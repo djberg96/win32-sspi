@@ -66,7 +66,7 @@ module Windows
       layout(
         :ulVersion, :ulong,
         :cBuffers, :ulong,
-        :pBuffers, :pointer,
+        :pBuffers, :pointer
       )
 
       def init(sec_buffer)
