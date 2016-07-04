@@ -1,3 +1,9 @@
+= DO NOT USE THIS REPOSITORY
+Please see https://github.com/garysick/win32-sspi
+
+I started, then dropped this library years ago, but garysick has continued to
+develop it since then. Please clone his repo instead.
+
 = Description
 This is an FFI implementation of SSPI on Windows.
 
